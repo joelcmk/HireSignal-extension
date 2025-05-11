@@ -1,61 +1,45 @@
 // import { useState } from 'react';
-import reactLogo from './assets/react.svg';
-import viteLogo from '/vite.svg';
+import hireAlertLogo from '/icon.png';
 import './App.css';
+import { useState } from 'react';
 
 function App() {
-  const onClick = async () => {
-    try {
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
-      if (!tab) {
+  const [showSponsoredPosts, setShowSponsoredPosts] = useState(true);
+
+  const handleToggle = () => {
+    setShowSponsoredPosts(!showSponsoredPosts);
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      if (tabs[0] && tabs[0].id) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: 'toggleSponsoredPosts',
+          showSponsoredPosts: !showSponsoredPosts,
+        });
+      } else {
         console.error('No active tab found');
-        return;
       }
-      console.log('Executing script in tab:', tab.id);
-      chrome.scripting.executeScript(
-        {
-          target: { tabId: tab.id! },
-          func: () => {
-            console.log('Script executed in tab');
-            document.body.style.backgroundColor = 'red';
-          },
-        },
-        (result) => {
-          if (chrome.runtime.lastError) {
-            console.error('Error executing script:', chrome.runtime.lastError);
-          } else {
-            console.log('Script execution result:', result);
-          }
-        }
-      );
-    } catch (error) {
-      console.error('Error:', error);
-    }
+    });
   };
 
   return (
     <>
       <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
+        <a href="https://hire-signal.vercel.app/" target="_blank">
+          <img src={hireAlertLogo} className="logo" alt="HireSignal logo" />
         </a>
       </div>
-      <h1>Vite + React</h1>
+      <h1>HireSignal</h1>
       <div className="card">
-        <button onClick={() => onClick()}>count is </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
+        <div>
+          <label>
+            <input
+              type="checkbox"
+              checked={showSponsoredPosts}
+              onChange={handleToggle}
+            />
+            Show Sponsored Posts
+          </label>
+        </div>
       </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
     </>
   );
 }
