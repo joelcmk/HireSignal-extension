@@ -1,4 +1,5 @@
 let showSponsoredPosts = true;
+let sortPostsByDate = true;
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.action === 'toggleSponsoredPosts') {
@@ -6,7 +7,15 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if (!showSponsoredPosts) {
       removeSponsoredJobs();
     }
+  } else if (request.action === 'toggleSortedPosts') {
+    sortPostsByDate = request.sortPostsByDate;
+    // Implement sorting logic here if needed
   }
+
+  sendResponse({
+    jobTitle: getJobTitle(),
+    location: getLocation(),
+  });
 });
 
 function removeSponsoredJobs() {
@@ -26,6 +35,24 @@ function removeSponsoredJobs() {
     job.remove();
   });
 }
+
+function getJobTitle() {
+  const jobTitleBox = document.querySelector('.jobs-search-box__text-input');
+  const triggerValue = jobTitleBox.getAttribute(
+    'data-job-search-box-keywords-input-trigger'
+  );
+  return triggerValue;
+}
+
+function getLocation() {
+  const locationInput = document.getElementById(
+    'jobs-search-box-location-id-ember33'
+  );
+  const locationValue = locationInput.value;
+  return locationValue;
+}
+
+function query(jobTitle, location) {}
 
 const observer = new MutationObserver(() => {
   if (!showSponsoredPosts) {
