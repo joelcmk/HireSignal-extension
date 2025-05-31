@@ -3,10 +3,11 @@ import hireAlertLogo from '/icon.png';
 import './App.css';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import Switch from './switch';
 
 function App() {
-  const [showSponsoredPosts, setShowSponsoredPosts] = useState(true);
-  const [sortPostsByDate, setSorPostsByDate] = useState(true);
+  const [showSponsoredPosts, setShowSponsoredPosts] = useState(false);
+  const [sortPostsByDate, setSortPostsByDate] = useState(false);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [jobTitle, setJobTitle] = useState(null);
@@ -14,14 +15,13 @@ function App() {
 
   const handleToggle = () => {
     setShowSponsoredPosts(!showSponsoredPosts);
-
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       if (tabs[0] && tabs[0].id) {
         chrome.tabs.sendMessage(
           tabs[0].id,
           {
             action: 'toggleSponsoredPosts',
-            showSponsoredPosts: !showSponsoredPosts,
+            showSponsoredPosts: showSponsoredPosts,
           },
           function (response) {
             setJobTitle(response.jobTitle);
@@ -33,10 +33,12 @@ function App() {
         console.error('No active tab found' + error);
       }
     });
+    // setShowSponsoredPosts(!showSponsoredPosts);
+    console.log('hello tg');
   };
 
   const handleSortToggle = () => {
-    setSorPostsByDate(!sortPostsByDate);
+    setSortPostsByDate(!sortPostsByDate);
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       if (tabs[0] && tabs[0].id) {
         chrome.tabs.sendMessage(
@@ -56,6 +58,8 @@ function App() {
       }
     });
   };
+
+  console.log(handleSortToggle);
 
   function query(jobTitle: string | null, location: string | null): void {
     if (jobTitle === null) {
@@ -110,23 +114,23 @@ function App() {
       <div className="card">
         <section>
           <h2>Preferences</h2>
-          <div className="checkbox-group">
-            <label>
-              <input
-                type="checkbox"
-                checked={showSponsoredPosts}
-                onChange={handleToggle}
+          <div className="toggles">
+            <div className="toggle">
+              <span> Show Sponsored Posts</span>
+              <Switch
+                isOn={showSponsoredPosts}
+                onClick={handleToggle}
+                id="sponsored-posts-switch"
               />
-              Show Sponsored Posts
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={sortPostsByDate}
-                onChange={handleSortToggle}
+            </div>
+            {/* <div className="toggle">
+              <span>Advanced mode</span>
+              <Switch
+                isOn={sortPostsByDate}
+                handleToggle={handleSortToggle}
+                id="sort-posts-switch"
               />
-              Sort posts by date
-            </label>
+            </div> */}
           </div>
         </section>
       </div>
