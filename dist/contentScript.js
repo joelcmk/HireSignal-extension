@@ -1,7 +1,11 @@
 let showSponsoredPosts = true;
 let sortPostsByDate = true;
 
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+chrome.runtime.onMessage.addListener(async function (
+  request,
+  sender,
+  sendResponse
+) {
   if (request.action === 'toggleSponsoredPosts') {
     showSponsoredPosts = request.showSponsoredPosts;
     if (!showSponsoredPosts) {
@@ -12,10 +16,15 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     // Implement sorting logic here if needed
   }
 
-  sendResponse({
-    jobTitle: getJobTitle(),
-    location: getLocation(),
-  });
+  const jobTitle = getJobTitle(); // Changed to sync as it reads from DOM directly
+  const location = getLocation(); // Changed to sync as it reads from DOM directly
+
+  const response = {
+    jobTitle,
+    location,
+  };
+  sendResponse(response);
+  return true; // Keep the messaging port open
 });
 
 function removeSponsoredJobs() {
@@ -37,22 +46,30 @@ function removeSponsoredJobs() {
 }
 
 function getJobTitle() {
-  const jobTitleBox = document.querySelector('.jobs-search-box__text-input');
-  const triggerValue = jobTitleBox.getAttribute(
-    'data-job-search-box-keywords-input-trigger'
+  const jobTitleInput = document.querySelector(
+    'input.jobs-search-box__text-input.jobs-search-box__keyboard-text-input'
   );
-  return triggerValue;
+
+  if (jobTitleInput) {
+    return jobTitleInput.value;
+  } else {
+    console.warn('Job title input not found.');
+    return null;
+  }
 }
 
 function getLocation() {
-  const locationInput = document.getElementById(
-    'jobs-search-box-location-id-ember33'
+  const locationInput = document.querySelector(
+    'input[aria-label="City, state, or zip code"]'
   );
-  const locationValue = locationInput.value;
-  return locationValue;
-}
 
-function query(jobTitle, location) {}
+  if (locationInput) {
+    return locationInput.value; // <--- Access the 'value' property to get the text
+  } else {
+    console.warn('Location input not found.');
+    return null;
+  }
+}
 
 const observer = new MutationObserver(() => {
   if (!showSponsoredPosts) {
