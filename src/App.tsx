@@ -6,11 +6,32 @@ import Switch from './switch';
 
 function App() {
   const [showSponsoredPosts, setShowSponsoredPosts] = useState(true);
-  const [sortPostsByDate, setSortPostsByDate] = useState(false);
+  // const [sortPostsByDate, setSortPostsByDate] = useState(false);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [jobTitle, setJobTitle] = useState(null);
   const [location, setLocation] = useState(null);
+  const [removedCount, setRemovedCount] = useState(0);
+
+  // Load saved states from Chrome storage when popup opens
+  useEffect(() => {
+    chrome.storage.sync.get(
+      ['showSponsoredPosts', 'totalRemovedCount'],
+      (result) => {
+        console.log('Popup loaded state from storage:', result);
+        if (result.showSponsoredPosts !== undefined) {
+          console.log(
+            'Setting showSponsoredPosts to:',
+            result.showSponsoredPosts
+          );
+          setShowSponsoredPosts(result.showSponsoredPosts);
+        }
+        if (result.totalRemovedCount !== undefined) {
+          setRemovedCount(result.totalRemovedCount);
+        }
+      }
+    );
+  }, []);
 
   const sendMessageToContentScript = (action: string, payload = {}) => {
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
@@ -50,18 +71,26 @@ function App() {
   const handleToggle = () => {
     const newShowSponsoredPosts = !showSponsoredPosts;
     setShowSponsoredPosts(newShowSponsoredPosts);
-    sendMessageToContentScript('toggleSponsoredPosts', {
+    
+    // Save to Chrome storage
+    chrome.storage.sync.set({ showSponsoredPosts: newShowSponsoredPosts }, () => {
+      console.log('Saved showSponsoredPosts to storage:', newShowSponsoredPosts);
+    });
+    
+    // Send message to content script with the correct action name
+    sendMessageToContentScript('updateSettings', {
       showSponsoredPosts: newShowSponsoredPosts,
     });
   };
 
-  const handleSortToggle = () => {
-    const newSortPostsByDate = !sortPostsByDate;
-    setSortPostsByDate(newSortPostsByDate);
-    sendMessageToContentScript('toggleSortedPosts', {
-      sortPostsByDate: newSortPostsByDate,
-    });
-  };
+  console.log(removedCount);
+  // const handleSortToggle = () => {
+  //   const newSortPostsByDate = !sortPostsByDate;
+  //   setSortPostsByDate(newSortPostsByDate);
+  //   sendMessageToContentScript('toggleSortedPosts', {
+  //     sortPostsByDate: newSortPostsByDate,
+  //   });
+  // };
 
   function query(
     jobTitleParam: string | null,
@@ -113,9 +142,9 @@ function App() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          <img src={hireAlertLogo} className="logo" alt="HireSignal logo" />
+          <img src={hireAlertLogo} className="logo" alt="Hire Signal logo" />
         </a>
-        <h1>HireSignal</h1>
+        <h1>Hire Signal</h1>
       </header>
       <div className="card">
         <section>
@@ -129,19 +158,23 @@ function App() {
                 id="sponsored-posts-switch"
               />
             </div>
-            <div className="toggle">
-              <span>Advanced mode</span>
+            {/* <div className="toggle">
+              <span>Advanced mode:</span>
               <Switch
                 isOn={sortPostsByDate}
                 onClick={handleSortToggle}
                 id="sort-posts-switch"
               />
-            </div>
+            </div> */}
           </div>
-          {/* Display job title and location for debugging/user info */}
-          <div>
-            <p>Job Title: {jobTitle || 'Not found'}</p>
-            <p>Location: {location || 'Not found'}</p>
+
+          {/* Counter display */}
+          <div className="counter-container">
+            <div className="counter-row">
+              <span className="counter-label">Sponsored Posts Removed</span>
+              <span className="counter-value">{removedCount}</span>
+            </div>
+            <div className="counter-subtitle">Total across all pages</div>
           </div>
         </section>
       </div>
