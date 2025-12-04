@@ -177,6 +177,19 @@ function App() {
             <div className="counter-subtitle">Total across all pages</div>
           </div>
         </section>
+
+        {/* Feedback section */}
+        <section>
+          <h2>Feedback</h2>
+          <a
+            href="https://docs.google.com/forms/d/e/1FAIpQLSdYNHbJn9Xw92kFCVdUYHVQg16d4-VqfYhcGYu3UHs5cVeMhg/viewform?usp=header"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="feedback-button"
+          >
+            Share Your Feedback
+          </a>
+        </section>
       </div>
     </>
   );
