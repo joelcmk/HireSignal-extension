@@ -1,4 +1,3 @@
-// import { useState } from 'react';
 import hireAlertLogo from '/icon.png';
 import './App.css';
 import { useEffect, useState } from 'react';
@@ -6,98 +5,134 @@ import axios from 'axios';
 import Switch from './switch';
 
 function App() {
-  const [showSponsoredPosts, setShowSponsoredPosts] = useState(false);
-  const [sortPostsByDate, setSortPostsByDate] = useState(false);
+  const [showSponsoredPosts, setShowSponsoredPosts] = useState(true);
+  // const [sortPostsByDate, setSortPostsByDate] = useState(false);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [jobTitle, setJobTitle] = useState(null);
   const [location, setLocation] = useState(null);
+  const [removedCount, setRemovedCount] = useState(0);
+
+  // Load saved states from Chrome storage when popup opens
+  useEffect(() => {
+    chrome.storage.sync.get(
+      ['showSponsoredPosts', 'totalRemovedCount'],
+      (result) => {
+        console.log('Popup loaded state from storage:', result);
+        if (result.showSponsoredPosts !== undefined) {
+          console.log(
+            'Setting showSponsoredPosts to:',
+            result.showSponsoredPosts
+          );
+          setShowSponsoredPosts(result.showSponsoredPosts);
+        }
+        if (result.totalRemovedCount !== undefined) {
+          setRemovedCount(result.totalRemovedCount);
+        }
+      }
+    );
+  }, []);
+
+  const sendMessageToContentScript = (action: string, payload = {}) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      if (tabs[0] && tabs[0].id) {
+        chrome.tabs.sendMessage(
+          tabs[0].id,
+          { action, ...payload },
+          function (response) {
+            if (chrome.runtime.lastError) {
+              console.error(
+                'Error sending message:',
+                chrome.runtime.lastError.message
+              );
+
+              return;
+            }
+            if (response) {
+              setJobTitle(response.jobTitle);
+              setLocation(response.location);
+              if (response.jobTitle && response.location) {
+                query(response.jobTitle, response.location);
+              }
+              console.log('Received response from content script:', response);
+            } else {
+              console.warn(
+                'Content script sent an empty or undefined response.'
+              );
+            }
+          }
+        );
+      } else {
+        console.error('No active tab found.');
+      }
+    });
+  };
 
   const handleToggle = () => {
-    setShowSponsoredPosts(!showSponsoredPosts);
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      if (tabs[0] && tabs[0].id) {
-        chrome.tabs.sendMessage(
-          tabs[0].id,
-          {
-            action: 'toggleSponsoredPosts',
-            showSponsoredPosts: showSponsoredPosts,
-          },
-          function (response) {
-            setJobTitle(response.jobTitle);
-            setLocation(response.location);
-            console.log('Received response from content script:', response);
-          }
-        );
-      } else {
-        console.error('No active tab found' + error);
-      }
+    const newShowSponsoredPosts = !showSponsoredPosts;
+    setShowSponsoredPosts(newShowSponsoredPosts);
+    
+    // Save to Chrome storage
+    chrome.storage.sync.set({ showSponsoredPosts: newShowSponsoredPosts }, () => {
+      console.log('Saved showSponsoredPosts to storage:', newShowSponsoredPosts);
     });
-    // setShowSponsoredPosts(!showSponsoredPosts);
-    console.log('hello tg');
-  };
-
-  const handleSortToggle = () => {
-    setSortPostsByDate(!sortPostsByDate);
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      if (tabs[0] && tabs[0].id) {
-        chrome.tabs.sendMessage(
-          tabs[0].id,
-          {
-            action: 'toggleSortedPosts',
-            showSponsoredPosts: !showSponsoredPosts,
-          },
-          function (response) {
-            setJobTitle(response.jobTitle);
-            setLocation(response.location);
-            console.log('Received response from content script:', response);
-          }
-        );
-      } else {
-        console.error('No active tab found' + error);
-      }
+    
+    // Send message to content script with the correct action name
+    sendMessageToContentScript('updateSettings', {
+      showSponsoredPosts: newShowSponsoredPosts,
     });
   };
 
-  console.log(handleSortToggle);
+  console.log(removedCount);
+  // const handleSortToggle = () => {
+  //   const newSortPostsByDate = !sortPostsByDate;
+  //   setSortPostsByDate(newSortPostsByDate);
+  //   sendMessageToContentScript('toggleSortedPosts', {
+  //     sortPostsByDate: newSortPostsByDate,
+  //   });
+  // };
 
-  function query(jobTitle: string | null, location: string | null): void {
-    if (jobTitle === null) {
-      console.error('Job title is null');
+  function query(
+    jobTitleParam: string | null,
+    locationParam: string | null
+  ): void {
+    if (!jobTitleParam || !locationParam) {
+      console.warn('Job title or location is null, cannot perform query.');
       return;
     }
-    if (location === null) {
-      console.error('Job title is null');
-      return;
-    }
-    const newJobTitle = jobTitle.replace(/ /g, '%20');
-    const newLocation = location.split(' ');
 
-    console.log(newJobTitle);
-    console.log(newLocation);
-  }
+    const newJobTitle = encodeURIComponent(jobTitleParam);
+    const newLocation = encodeURIComponent(locationParam);
 
-  console.log('jobTitle ', jobTitle);
-  console.log('location ', location);
+    console.log('Querying with:', newJobTitle, newLocation);
 
-  query(jobTitle, location);
-
-  useEffect(() => {
     axios
       .get(
-        'https://hiresignal-server.vercel.app/search?keyword=javascript&location=chicago'
+        `https://hiresignal-server.vercel.app/search?keyword=${newJobTitle}&location=${newLocation}`
       )
       .then((response) => {
         setData(response.data);
-        // console.log(response);
       })
-      .catch((error) => {
-        setError(error.message);
-        // console.error(error);
+      .catch((err) => {
+        setError(err.message);
+        console.error('API query error:', err);
       });
+  }
+
+  // console.log(query('javascript', 'dallas'));
+
+  useEffect(() => {
+    try {
+      sendMessageToContentScript('getInitialData');
+    } catch (e) {
+      console.error('Error in useEffect (initial data fetch):', e);
+    }
   }, []);
 
-  console.log(data);
+  console.log('Current jobTitle state:', jobTitle);
+  console.log('Current location state:', location);
+  console.log('API data:', data);
+  console.log('API error:', error);
 
   return (
     <>
@@ -107,9 +142,9 @@ function App() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          <img src={hireAlertLogo} className="logo" alt="HireSignal logo" />
+          <img src={hireAlertLogo} className="logo" alt="Hire Signal logo" />
         </a>
-        <h1>HireSignal</h1>
+        <h1>Hire Signal</h1>
       </header>
       <div className="card">
         <section>
@@ -124,13 +159,22 @@ function App() {
               />
             </div>
             {/* <div className="toggle">
-              <span>Advanced mode</span>
+              <span>Advanced mode:</span>
               <Switch
                 isOn={sortPostsByDate}
-                handleToggle={handleSortToggle}
+                onClick={handleSortToggle}
                 id="sort-posts-switch"
               />
             </div> */}
+          </div>
+
+          {/* Counter display */}
+          <div className="counter-container">
+            <div className="counter-row">
+              <span className="counter-label">Sponsored Posts Removed</span>
+              <span className="counter-value">{removedCount}</span>
+            </div>
+            <div className="counter-subtitle">Total across all pages</div>
           </div>
         </section>
       </div>
