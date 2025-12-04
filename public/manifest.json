@@ -2,14 +2,20 @@
   "manifest_version": 3,
   "name": "Hire Signal",
   "icons": { "32": "favicon-32x32.png" },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "action": { "default_popup": "index.html" },
-  "permissions": ["activeTab"],
+  "permissions": ["activeTab", "storage", "webRequest"],
+  "host_permissions": ["https://www.linkedin.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
 
   "content_scripts": [
     {
       "matches": ["*://www.linkedin.com/*"],
-      "js": ["contentScript.js"]
+      "js": ["sponsoredPostsHandler.js", "contentScript.js"],
+      "run_at": "document_idle",
+      "all_frames": false
     }
   ]
 }
